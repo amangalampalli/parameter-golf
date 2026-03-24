@@ -2,6 +2,165 @@
 """
 Single-file GPT trainer for FineWeb experiments.
 
+Exact commands used for this file:
+
+All-in-one train:
+```bash
+python3 train_gpt_final.py \
+  --mode all \
+  --device auto \
+  --data-path ./data/datasets/fineweb10B_sp1024 \
+  --tokenizer-path ./data/tokenizers/fineweb_1024_bpe.model \
+  --train-batch-tokens 16384 \
+  --val-batch-tokens 8192 \
+  --block-size 256 \
+  --n-layer 6 \
+  --n-head 6 \
+  --n-embd 384 \
+  --dropout 0.0 \
+  --max-steps 50000 \
+  --eval-interval 200 \
+  --log-interval 20 \
+  --save-every 1000 \
+  --early-stopping-patience 8 \
+  --early-stopping-min-delta 0.002 \
+  --report-bpb \
+  --qat \
+  --qat-bits 4 \
+  --qat-start-step 40000 \
+  --export-calibration-batches 4 \
+  --export-max-loss-increase 0.01 \
+  --checkpoint-path checkpoints/final_{step}.pt \
+  --legacy-export-path checkpoints/final_quantized.ptz
+```
+
+Backbone train:
+```bash
+python3 train_gpt_final.py \
+  --mode backbone \
+  --device auto \
+  --data-path ./data/datasets/fineweb10B_sp1024 \
+  --train-batch-tokens 16384 \
+  --val-batch-tokens 8192 \
+  --block-size 256 \
+  --n-layer 6 \
+  --n-head 6 \
+  --n-embd 384 \
+  --dropout 0.0 \
+  --max-steps 50000 \
+  --eval-interval 200 \
+  --log-interval 20 \
+  --save-every 1000 \
+  --early-stopping-patience 8 \
+  --early-stopping-min-delta 0.002 \
+  --report-bpb \
+  --qat \
+  --qat-bits 4 \
+  --qat-start-step 40000 \
+  --export-calibration-batches 4 \
+  --export-max-loss-increase 0.01 \
+  --checkpoint-path checkpoints/backbone_{step}.pt \
+  --legacy-export-path checkpoints/backbone_final_quantized.ptz
+```
+
+Shadow train:
+```bash
+python3 train_gpt_final.py \
+  --mode shadow \
+  --device auto \
+  --data-path ./data/datasets/fineweb10B_sp1024 \
+  --tokenizer-path ./data/tokenizers/fineweb_1024_bpe.model \
+  --block-size 256 \
+  --n-layer 6 \
+  --n-head 6 \
+  --n-embd 384 \
+  --dropout 0.0 \
+  --train-batch-tokens 8192 \
+  --val-batch-tokens 8192 \
+  --max-steps 41601 \
+  --eval-interval 200 \
+  --log-interval 20 \
+  --save-every 500 \
+  --early-stopping-patience 8 \
+  --early-stopping-min-delta 0.002 \
+  --load-checkpoint checkpoints/shadow_weird_36601.pt \
+  --checkpoint-path checkpoints/shadow_selective_{step}.pt \
+  --report-bpb \
+  --use-shadow-stream \
+  --shadow-lr 2e-4 \
+  --shadow-gate-threshold 0.62 \
+  --shadow-gate-sharpness 16.0 \
+  --shadow-active-target 0.20 \
+  --shadow-active-excess-coef 0.05 \
+  --shadow-boundary-soft-threshold 0.82 \
+  --shadow-boundary-hard-threshold 0.93 \
+  --shadow-template-norm-coef 1e-4 \
+  --shadow-adapter-norm-coef 5e-5 \
+  --shadow-logit-norm-coef 5e-5 \
+  --shadow-ln-norm-coef 5e-5 \
+  --shadow-ancestry-entropy-coef 0.02 \
+  --shadow-slot-balance-coef 0.02
+```
+
+Eval:
+```bash
+python3 train_gpt_final.py \
+  --mode shadow \
+  --device auto \
+  --data-path ./data/datasets/fineweb10B_sp1024 \
+  --tokenizer-path ./data/tokenizers/fineweb_1024_bpe.model \
+  --block-size 256 \
+  --n-layer 6 \
+  --n-head 6 \
+  --n-embd 384 \
+  --dropout 0.0 \
+  --val-batch-tokens 8192 \
+  --max-val-batches 8 \
+  --load-checkpoint checkpoints/shadow_selective_39601.pt \
+  --eval-only \
+  --report-bpb \
+  --use-shadow-stream \
+  --shadow-window 24 \
+  --shadow-hidden-dim 128 \
+  --shadow-dropout 0.1 \
+  --shadow-control-scale 0.14 \
+  --shadow-gate-bias -1.5 \
+  --shadow-gate-l1-coef 0.01 \
+  --shadow-gate-threshold 0.62 \
+  --shadow-gate-sharpness 16.0 \
+  --shadow-active-target 0.20 \
+  --shadow-active-excess-coef 0.05 \
+  --shadow-regime-temp 0.7 \
+  --shadow-boundary-scale 0.08 \
+  --shadow-boundary-soft-threshold 0.82 \
+  --shadow-boundary-hard-threshold 0.93 \
+  --shadow-suppression-scale 0.18 \
+  --shadow-suppression-floor 0.78 \
+  --shadow-suppression-l1-coef 0.005 \
+  --shadow-token-dropout-max 0.08 \
+  --shadow-corruption-prob 0.05 \
+  --shadow-fingerprint-buckets 64 \
+  --shadow-fingerprint-scale 0.05 \
+  --shadow-recurrence-scale 0.05 \
+  --shadow-pos-warp-scale 0.05 \
+  --shadow-adapter-scale 0.08 \
+  --shadow-adapter-layers 2 \
+  --shadow-reset-scale 0.06 \
+  --shadow-logit-scale 0.04 \
+  --shadow-consistency-coef 0.05 \
+  --shadow-template-slots 4 \
+  --shadow-template-scale 0.08 \
+  --shadow-ancestry-scale 0.05 \
+  --shadow-ancestry-coef 0.05 \
+  --shadow-ln-mod-scale 0.08 \
+  --shadow-template-norm-coef 1e-4 \
+  --shadow-adapter-norm-coef 5e-5 \
+  --shadow-logit-norm-coef 5e-5 \
+  --shadow-ln-norm-coef 5e-5 \
+  --shadow-ancestry-entropy-coef 0.02 \
+  --shadow-slot-balance-coef 0.02
+```
+
 Retained:
 - decoder-only GPT backbone
 - structural shadow stream for FineWeb-style web-page residue
@@ -28,7 +187,7 @@ import subprocess
 import sys
 import uuid
 import zlib
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -103,6 +262,17 @@ class ShadowConfig:
     reset_scale: float = 0.06
     logit_scale: float = 0.04
     consistency_coef: float = 0.05
+    template_slots: int = 4
+    template_scale: float = 0.08
+    ancestry_scale: float = 0.05
+    ancestry_coef: float = 0.05
+    ln_mod_scale: float = 0.08
+    template_norm_coef: float = 1e-4
+    adapter_norm_coef: float = 5e-5
+    logit_norm_coef: float = 5e-5
+    ln_norm_coef: float = 5e-5
+    ancestry_entropy_coef: float = 0.02
+    slot_balance_coef: float = 0.02
 
 
 @dataclass
@@ -179,7 +349,7 @@ def add_bool_arg(parser: argparse.ArgumentParser, name: str, default: bool, help
 
 def parse_args() -> ExperimentConfig:
     parser = argparse.ArgumentParser(description="Single-file GPT + shadow trainer")
-    parser.add_argument("--mode", choices=["backbone", "shadow"], default=os.environ.get("MODE", "backbone"))
+    parser.add_argument("--mode", choices=["backbone", "shadow", "all"], default=os.environ.get("MODE", "backbone"))
     parser.add_argument("--device", choices=["auto", "mps", "cuda", "cpu"], default=os.environ.get("DEVICE", "auto"))
     parser.add_argument("--seed", type=int, default=int(os.environ.get("SEED", 1337)))
     parser.add_argument("--run-id", default=os.environ.get("RUN_ID", str(uuid.uuid4())))
@@ -242,6 +412,17 @@ def parse_args() -> ExperimentConfig:
     parser.add_argument("--shadow-reset-scale", type=float, default=float(os.environ.get("SHADOW_RESET_SCALE", 0.06)))
     parser.add_argument("--shadow-logit-scale", type=float, default=float(os.environ.get("SHADOW_LOGIT_SCALE", 0.04)))
     parser.add_argument("--shadow-consistency-coef", type=float, default=float(os.environ.get("SHADOW_CONSISTENCY_COEF", 0.05)))
+    parser.add_argument("--shadow-template-slots", type=int, default=int(os.environ.get("SHADOW_TEMPLATE_SLOTS", 4)))
+    parser.add_argument("--shadow-template-scale", type=float, default=float(os.environ.get("SHADOW_TEMPLATE_SCALE", 0.08)))
+    parser.add_argument("--shadow-ancestry-scale", type=float, default=float(os.environ.get("SHADOW_ANCESTRY_SCALE", 0.05)))
+    parser.add_argument("--shadow-ancestry-coef", type=float, default=float(os.environ.get("SHADOW_ANCESTRY_COEF", 0.05)))
+    parser.add_argument("--shadow-ln-mod-scale", type=float, default=float(os.environ.get("SHADOW_LN_MOD_SCALE", 0.08)))
+    parser.add_argument("--shadow-template-norm-coef", type=float, default=float(os.environ.get("SHADOW_TEMPLATE_NORM_COEF", 1e-4)))
+    parser.add_argument("--shadow-adapter-norm-coef", type=float, default=float(os.environ.get("SHADOW_ADAPTER_NORM_COEF", 5e-5)))
+    parser.add_argument("--shadow-logit-norm-coef", type=float, default=float(os.environ.get("SHADOW_LOGIT_NORM_COEF", 5e-5)))
+    parser.add_argument("--shadow-ln-norm-coef", type=float, default=float(os.environ.get("SHADOW_LN_NORM_COEF", 5e-5)))
+    parser.add_argument("--shadow-ancestry-entropy-coef", type=float, default=float(os.environ.get("SHADOW_ANCESTRY_ENTROPY_COEF", 0.02)))
+    parser.add_argument("--shadow-slot-balance-coef", type=float, default=float(os.environ.get("SHADOW_SLOT_BALANCE_COEF", 0.02)))
     parser.add_argument("--generate-tokens", type=int, default=int(os.environ.get("GENERATE_TOKENS", 0)))
     parser.add_argument("--legacy-export-path", default=os.environ.get("LEGACY_EXPORT_PATH", ""))
     add_bool_arg(parser, "bias", False, "use bias terms in linear layers")
@@ -299,6 +480,17 @@ def parse_args() -> ExperimentConfig:
         reset_scale=args.shadow_reset_scale,
         logit_scale=args.shadow_logit_scale,
         consistency_coef=args.shadow_consistency_coef,
+        template_slots=args.shadow_template_slots,
+        template_scale=args.shadow_template_scale,
+        ancestry_scale=args.shadow_ancestry_scale,
+        ancestry_coef=args.shadow_ancestry_coef,
+        ln_mod_scale=args.shadow_ln_mod_scale,
+        template_norm_coef=args.shadow_template_norm_coef,
+        adapter_norm_coef=args.shadow_adapter_norm_coef,
+        logit_norm_coef=args.shadow_logit_norm_coef,
+        ln_norm_coef=args.shadow_ln_norm_coef,
+        ancestry_entropy_coef=args.shadow_ancestry_entropy_coef,
+        slot_balance_coef=args.shadow_slot_balance_coef,
     )
     train = TrainConfig(
         mode=args.mode,
@@ -822,6 +1014,8 @@ class GPTBackbone(nn.Module):
         pos_bias: Tensor | None = None,
         adapter_bias: Tensor | None = None,
         adapter_layers: int = 0,
+        ln_gain: Tensor | None = None,
+        ln_bias: Tensor | None = None,
     ) -> dict[str, Tensor | None]:
         bsz, seq_len = input_ids.shape
         if seq_len > self.config.block_size:
@@ -847,6 +1041,10 @@ class GPTBackbone(nn.Module):
             if adapter_bias is not None and block_idx >= apply_adapter_from:
                 x = x + adapter_bias
         hidden = self.ln_f(x)
+        if ln_gain is not None:
+            hidden = hidden * (1.0 + ln_gain)
+        if ln_bias is not None:
+            hidden = hidden + ln_bias
         logits = linear_with_optional_qat(hidden, self.lm_head, qat_on, max(self.qat_bits, 6))
         loss = None
         if targets is not None:
@@ -902,6 +1100,10 @@ class WebArchaeologyShadow(nn.Module):
         self.adapter_layers = max(0, int(config.adapter_layers))
         self.reset_scale = float(config.reset_scale)
         self.logit_scale = float(config.logit_scale)
+        self.template_slots = max(1, int(config.template_slots))
+        self.template_scale = float(config.template_scale)
+        self.ancestry_scale = float(config.ancestry_scale)
+        self.ln_mod_scale = float(config.ln_mod_scale)
         table_size = max(1, vocab_size)
         meta = metadata or {}
         token_class = meta.get("token_class", torch.zeros((table_size,), dtype=torch.long))
@@ -930,11 +1132,13 @@ class WebArchaeologyShadow(nn.Module):
         self.boundary_embed = nn.Embedding(3, hidden_size)
         self.fingerprint_embed = nn.Embedding(self.fingerprint_buckets, hidden_size)
         self.recurrence_embed = nn.Embedding(4, hidden_size)
+        self.ancestry_embed = nn.Embedding(4, hidden_size)
         dense_feature_dim = len(self.scalar_names) + 8
         self.scalar_proj = nn.Linear(dense_feature_dim, hidden_size)
         self.rhythm_proj = nn.Linear(dense_feature_dim, hidden_size)
         self.multi_view_proj = nn.Linear(hidden_size * 2, hidden_size)
         self.multi_view_gate = nn.Linear(hidden_size * 2, hidden_size)
+        self.template_out_proj = nn.Linear(hidden_size * 2, hidden_size)
         self.gate_net = nn.Sequential(
             nn.Linear(hidden_size * 2 + dense_feature_dim, config.hidden_dim),
             nn.GELU(),
@@ -950,6 +1154,10 @@ class WebArchaeologyShadow(nn.Module):
         self.adapter_proj = nn.Sequential(nn.LayerNorm(hidden_size), nn.Linear(hidden_size, hidden_size), nn.Tanh())
         self.logit_proj = nn.Linear(hidden_size, vocab_size, bias=False)
         self.consistency_head = nn.Linear(hidden_size, len(self.regime_names))
+        self.ancestry_head = nn.Linear(hidden_size, 4)
+        self.ln_gain_proj = nn.Linear(hidden_size, hidden_size)
+        self.ln_bias_proj = nn.Linear(hidden_size, hidden_size)
+        self.template_queries = nn.Parameter(torch.randn(self.template_slots, hidden_size) * 0.02)
         with torch.no_grad():
             self.gate_net[-1].bias.fill_(config.gate_bias)
 
@@ -971,6 +1179,11 @@ class WebArchaeologyShadow(nn.Module):
                 "pos_bias": zeros,
                 "adapter_bias": zeros,
                 "logit_bias": torch.zeros((*input_ids.shape, gpt_logits.size(-1)), device=input_ids.device, dtype=torch.float32),
+                "ln_gain": zeros,
+                "ln_bias": zeros,
+                "adapter_norm": torch.zeros(input_ids.size(0), device=input_ids.device, dtype=torch.float32),
+                "logit_bias_norm": torch.zeros(input_ids.size(0), device=input_ids.device, dtype=torch.float32),
+                "ln_mod_norm": torch.zeros(input_ids.size(0), device=input_ids.device, dtype=torch.float32),
                 "gate": torch.zeros(input_ids.shape, device=input_ids.device, dtype=torch.float32),
                 "active_frac": torch.zeros(input_ids.size(0), device=input_ids.device, dtype=torch.float32),
                 "gate_raw_mean": torch.zeros(input_ids.size(0), device=input_ids.device, dtype=torch.float32),
@@ -982,6 +1195,9 @@ class WebArchaeologyShadow(nn.Module):
                 "corruption_rate": torch.zeros(input_ids.size(0), device=input_ids.device, dtype=torch.float32),
                 "fingerprint_diversity": torch.zeros(input_ids.size(0), device=input_ids.device, dtype=torch.float32),
                 "recurrence_tag_mean": torch.zeros(input_ids.size(0), device=input_ids.device, dtype=torch.float32),
+                "template_slot_norm": torch.zeros(input_ids.size(0), device=input_ids.device, dtype=torch.float32),
+                "template_usage_entropy": torch.zeros(input_ids.size(0), device=input_ids.device, dtype=torch.float32),
+                "ancestry_logits": torch.zeros((*input_ids.shape, 4), device=input_ids.device, dtype=torch.float32),
                 "regime_probs": regime_probs,
                 "consistency_logits": torch.zeros((*input_ids.shape, len(self.regime_names)), device=input_ids.device, dtype=torch.float32),
                 "augmented_input_ids": input_ids,
@@ -1056,9 +1272,20 @@ class WebArchaeologyShadow(nn.Module):
         mix_gate = torch.sigmoid(self.multi_view_gate(multi_view_input))
         mixed_summary = mix_gate * lexical_summary + (1.0 - mix_gate) * rhythm_summary
         shadow_summary = torch.tanh(self.multi_view_proj(multi_view_input)) + mixed_summary
-        gate_input = torch.cat([hidden.detach().float(), shadow_summary.float(), dense_features.float()], dim=-1)
-        gate_raw = torch.sigmoid(self.gate_net(gate_input)).squeeze(-1)
-        gate = torch.sigmoid((gate_raw - self.gate_threshold) * self.gate_sharpness)
+        slot_scores = torch.einsum("bth,sh->bts", shadow_summary, self.template_queries) / math.sqrt(shadow_summary.size(-1))
+        token_to_slot = F.softmax(slot_scores, dim=-1)
+        slot_memory = torch.einsum("bts,bth->bsh", token_to_slot, shadow_summary)
+        slot_memory = slot_memory / slot_memory.norm(dim=-1, keepdim=True).clamp_min(1e-6)
+        slot_to_token = F.softmax(torch.einsum("bth,bsh->bts", shadow_summary, slot_memory) / math.sqrt(shadow_summary.size(-1)), dim=-1)
+        template_context = torch.einsum("bts,bsh->bth", slot_to_token, slot_memory)
+        shadow_summary = shadow_summary + self.template_scale * torch.tanh(self.template_out_proj(torch.cat([shadow_summary, template_context], dim=-1)))
+        ancestry_targets = torch.zeros_like(class_ids)
+        ancestry_targets = torch.where(regime_probs[..., self.regime_names.index("metadata")] + regime_probs[..., self.regime_names.index("numeric")] > 0.55, torch.ones_like(ancestry_targets), ancestry_targets)
+        ancestry_targets = torch.where(regime_probs[..., self.regime_names.index("nav")] + regime_probs[..., self.regime_names.index("markup")] + regime_probs[..., self.regime_names.index("list")] > 0.65, torch.full_like(ancestry_targets, 2), ancestry_targets)
+        ancestry_targets = torch.where(regime_probs[..., self.regime_names.index("boilerplate")] + repeat_local > 0.65, torch.full_like(ancestry_targets, 3), ancestry_targets)
+        ancestry_logits = self.ancestry_head(shadow_summary.float())
+        ancestry_probs = F.softmax(ancestry_logits, dim=-1)
+        shadow_summary = shadow_summary + self.ancestry_scale * (ancestry_probs @ self.ancestry_embed.weight)
         suppression_strength = torch.sigmoid(
             3.0 * regime_probs[..., self.regime_names.index("boilerplate")]
             + 2.0 * regime_probs[..., self.regime_names.index("nav")]
@@ -1068,6 +1295,9 @@ class WebArchaeologyShadow(nn.Module):
             - 0.7 * regime_probs[..., self.regime_names.index("title")]
             - 1.0
         )
+        gate_input = torch.cat([hidden.detach().float(), shadow_summary.float(), dense_features.float()], dim=-1)
+        gate_raw = torch.sigmoid(self.gate_net(gate_input)).squeeze(-1)
+        gate = torch.sigmoid((gate_raw - self.gate_threshold) * self.gate_sharpness)
         reset_indicator = torch.zeros_like(suppression_strength)
         reset_indicator[:, 1:] = (boundary_ids[:, :-1] == 2).float()
         token_scale = (1.0 - self.suppression_scale * suppression_strength).clamp(min=self.suppression_floor, max=1.0)
@@ -1087,12 +1317,21 @@ class WebArchaeologyShadow(nn.Module):
         adapter_bias = self.adapter_scale * (gate + 0.5 * reset_indicator).unsqueeze(-1) * self.adapter_proj(shadow_summary)
         logit_bias = self.logit_scale * gate.unsqueeze(-1) * self.logit_proj(shadow_summary.float())
         consistency_logits = self.consistency_head(shadow_summary.float())
+        ln_gain = self.ln_mod_scale * torch.tanh(self.ln_gain_proj(shadow_summary.float()))
+        ln_bias = self.ln_mod_scale * torch.tanh(self.ln_bias_proj(shadow_summary.float()))
+        slot_usage = token_to_slot.mean(dim=1)
+        slot_entropy = -(slot_usage * torch.log(slot_usage.clamp_min(1e-8))).sum(dim=-1) / math.log(max(self.template_slots, 2))
         return {
             "control_bias": control_bias,
             "token_scale": token_scale,
             "pos_bias": pos_bias,
             "adapter_bias": adapter_bias,
             "logit_bias": logit_bias,
+            "ln_gain": ln_gain,
+            "ln_bias": ln_bias,
+            "adapter_norm": adapter_bias.norm(dim=-1).mean(dim=1),
+            "logit_bias_norm": logit_bias.norm(dim=-1).mean(dim=1),
+            "ln_mod_norm": (ln_gain.norm(dim=-1) + ln_bias.norm(dim=-1)).mean(dim=1),
             "gate": gate,
             "gate_raw_mean": gate_raw.mean(dim=1),
             "active_frac": (gate > 0.25).float().mean(dim=1),
@@ -1104,6 +1343,10 @@ class WebArchaeologyShadow(nn.Module):
             "corruption_rate": corruption_mask.mean(dim=1),
             "fingerprint_diversity": fingerprint_ids.float().std(dim=1) / max(float(self.fingerprint_buckets), 1.0),
             "recurrence_tag_mean": recurrence_ids.float().mean(dim=1),
+            "template_slot_norm": slot_memory.norm(dim=-1).mean(dim=-1),
+            "template_usage_entropy": slot_entropy,
+            "ancestry_logits": ancestry_logits,
+            "ancestry_targets": ancestry_targets,
             "regime_probs": regime_probs,
             "consistency_logits": consistency_logits,
             "augmented_input_ids": augmented_input_ids,
@@ -1143,6 +1386,8 @@ class HybridLanguageModel(nn.Module):
             pos_bias=shadow_out["pos_bias"],
             adapter_bias=shadow_out["adapter_bias"],
             adapter_layers=self.shadow_config.adapter_layers,
+            ln_gain=shadow_out["ln_gain"],
+            ln_bias=shadow_out["ln_bias"],
         )
         logits = controlled_out["logits"] + shadow_out["logit_bias"]
         outputs: dict[str, Tensor | None] = {
@@ -1163,8 +1408,14 @@ class HybridLanguageModel(nn.Module):
             "shadow_corruption_rate": shadow_out["corruption_rate"],
             "shadow_fingerprint_diversity": shadow_out["fingerprint_diversity"],
             "shadow_recurrence_tag_mean": shadow_out["recurrence_tag_mean"],
+            "shadow_template_slot_norm": shadow_out["template_slot_norm"],
+            "shadow_template_usage_entropy": shadow_out["template_usage_entropy"],
+            "shadow_adapter_norm": shadow_out["adapter_norm"],
+            "shadow_logit_bias_norm": shadow_out["logit_bias_norm"],
+            "shadow_ln_mod_norm": shadow_out["ln_mod_norm"],
             "shadow_regime_probs": shadow_out["regime_probs"],
             "shadow_consistency_logits": shadow_out["consistency_logits"],
+            "shadow_ancestry_logits": shadow_out["ancestry_logits"],
         }
         if targets is not None:
             outputs["loss"] = F.cross_entropy(logits.reshape(-1, logits.size(-1)).float(), targets.reshape(-1), reduction="mean")
@@ -1174,6 +1425,11 @@ class HybridLanguageModel(nn.Module):
             outputs["shadow_consistency_loss"] = F.cross_entropy(
                 shadow_out["consistency_logits"][:, :-1, :].reshape(-1, shadow_out["consistency_logits"].size(-1)).float(),
                 shadow_out["regime_probs"][:, 1:, :].argmax(dim=-1).reshape(-1),
+                reduction="mean",
+            )
+            outputs["shadow_ancestry_loss"] = F.cross_entropy(
+                shadow_out["ancestry_logits"].reshape(-1, shadow_out["ancestry_logits"].size(-1)).float(),
+                shadow_out["ancestry_targets"].reshape(-1),
                 reduction="mean",
             )
         return outputs
@@ -1248,10 +1504,27 @@ def compute_shadow_losses(outputs: dict[str, Tensor], config: ShadowConfig) -> t
     gate_mean = outputs["shadow_gate"].mean()
     suppression_mean = outputs["shadow_suppression_mean"].mean()
     consistency_loss = outputs["shadow_consistency_loss"]
+    ancestry_loss = outputs["shadow_ancestry_loss"]
     active_frac = outputs["shadow_active_frac"].mean()
     active_excess = torch.relu(active_frac - config.active_target)
     gate_loss = config.gate_l1_coef * gate_mean + config.suppression_l1_coef * suppression_mean + config.active_excess_coef * active_excess
-    total_loss = ce_loss + gate_loss + config.consistency_coef * consistency_loss
+    template_norm = outputs["shadow_template_slot_norm"].mean()
+    adapter_norm = outputs["shadow_adapter_norm"].mean()
+    logit_bias_norm = outputs["shadow_logit_bias_norm"].mean()
+    ln_mod_norm = outputs["shadow_ln_mod_norm"].mean()
+    ancestry_probs = F.softmax(outputs["shadow_ancestry_logits"].float(), dim=-1)
+    ancestry_mean = ancestry_probs.mean(dim=(0, 1))
+    ancestry_entropy = -(ancestry_mean * torch.log(ancestry_mean.clamp_min(1e-8))).sum() / math.log(ancestry_mean.numel())
+    slot_balance_penalty = 1.0 - outputs["shadow_template_usage_entropy"].mean()
+    regularization = (
+        config.template_norm_coef * template_norm
+        + config.adapter_norm_coef * adapter_norm
+        + config.logit_norm_coef * logit_bias_norm
+        + config.ln_norm_coef * ln_mod_norm
+        + config.slot_balance_coef * slot_balance_penalty
+        + config.ancestry_entropy_coef * (1.0 - ancestry_entropy)
+    )
+    total_loss = ce_loss + gate_loss + config.consistency_coef * consistency_loss + config.ancestry_coef * ancestry_loss + regularization
     stats = {
         "ce_loss": float(ce_loss.item()),
         "gpt_loss": float(outputs["gpt_loss"].item()),
@@ -1268,13 +1541,23 @@ def compute_shadow_losses(outputs: dict[str, Tensor], config: ShadowConfig) -> t
         "shadow_corruption_rate": float(outputs["shadow_corruption_rate"].mean().item()),
         "shadow_fingerprint_diversity": float(outputs["shadow_fingerprint_diversity"].mean().item()),
         "shadow_recurrence_tag_mean": float(outputs["shadow_recurrence_tag_mean"].mean().item()),
+        "shadow_template_slot_norm": float(outputs["shadow_template_slot_norm"].mean().item()),
+        "shadow_template_usage_entropy": float(outputs["shadow_template_usage_entropy"].mean().item()),
+        "shadow_adapter_norm": float(adapter_norm.item()),
+        "shadow_logit_bias_norm": float(logit_bias_norm.item()),
+        "shadow_ln_mod_norm": float(ln_mod_norm.item()),
         "shadow_consistency_loss": float(consistency_loss.item()),
+        "shadow_ancestry_loss": float(ancestry_loss.item()),
+        "shadow_ancestry_entropy": float(ancestry_entropy.item()),
+        "shadow_slot_balance_penalty": float(slot_balance_penalty.item()),
         "shadow_target_lp": float(outputs["shadow_target_logprobs"].mean().item()),
         "gpt_target_lp": float(outputs["gpt_target_logprobs"].mean().item()),
     }
     regime_mean = outputs["shadow_regime_probs"].mean(dim=(0, 1))
     for idx, name in enumerate(WebArchaeologyShadow.regime_names):
         stats[f"shadow_regime_{name}"] = float(regime_mean[idx].item())
+    for idx, name in enumerate(("content", "metadata", "layout", "template")):
+        stats[f"shadow_ancestry_{name}"] = float(ancestry_mean[idx].item())
     return total_loss, stats
 
 
@@ -1296,6 +1579,12 @@ def evaluate(model: HybridLanguageModel, val_tokens: Tensor, config: ExperimentC
     shadow_corruption_rates: list[float] = []
     shadow_fingerprint_diversities: list[float] = []
     shadow_recurrence_tag_means: list[float] = []
+    shadow_template_slot_norms: list[float] = []
+    shadow_template_usage_entropies: list[float] = []
+    shadow_adapter_norms: list[float] = []
+    shadow_logit_bias_norms: list[float] = []
+    shadow_ln_mod_norms: list[float] = []
+    shadow_ancestry_means: list[Tensor] = []
     shadow_regime_means: list[Tensor] = []
     total_bytes = 0.0
     total_nats = 0.0
@@ -1321,6 +1610,12 @@ def evaluate(model: HybridLanguageModel, val_tokens: Tensor, config: ExperimentC
             shadow_corruption_rates.append(float(outputs["shadow_corruption_rate"].mean().item()))
             shadow_fingerprint_diversities.append(float(outputs["shadow_fingerprint_diversity"].mean().item()))
             shadow_recurrence_tag_means.append(float(outputs["shadow_recurrence_tag_mean"].mean().item()))
+            shadow_template_slot_norms.append(float(outputs["shadow_template_slot_norm"].mean().item()))
+            shadow_template_usage_entropies.append(float(outputs["shadow_template_usage_entropy"].mean().item()))
+            shadow_adapter_norms.append(float(outputs["shadow_adapter_norm"].mean().item()))
+            shadow_logit_bias_norms.append(float(outputs["shadow_logit_bias_norm"].mean().item()))
+            shadow_ln_mod_norms.append(float(outputs["shadow_ln_mod_norm"].mean().item()))
+            shadow_ancestry_means.append(F.softmax(outputs["shadow_ancestry_logits"].float(), dim=-1).mean(dim=(0, 1)).detach().cpu())
             shadow_regime_means.append(outputs["shadow_regime_probs"].mean(dim=(0, 1)).detach().cpu())
         if tokenizer_luts is not None:
             total_bytes += bytes_per_targets(batch["input_ids"], batch["targets"], tokenizer_luts)
@@ -1347,10 +1642,19 @@ def evaluate(model: HybridLanguageModel, val_tokens: Tensor, config: ExperimentC
         metrics["shadow_corruption_rate"] = float(np.mean(shadow_corruption_rates))
         metrics["shadow_fingerprint_diversity"] = float(np.mean(shadow_fingerprint_diversities))
         metrics["shadow_recurrence_tag_mean"] = float(np.mean(shadow_recurrence_tag_means))
+        metrics["shadow_template_slot_norm"] = float(np.mean(shadow_template_slot_norms))
+        metrics["shadow_template_usage_entropy"] = float(np.mean(shadow_template_usage_entropies))
+        metrics["shadow_adapter_norm"] = float(np.mean(shadow_adapter_norms))
+        metrics["shadow_logit_bias_norm"] = float(np.mean(shadow_logit_bias_norms))
+        metrics["shadow_ln_mod_norm"] = float(np.mean(shadow_ln_mod_norms))
     if shadow_regime_means:
         regime_avg = torch.stack(shadow_regime_means).mean(dim=0)
         for idx, name in enumerate(WebArchaeologyShadow.regime_names):
             metrics[f"shadow_regime_{name}"] = float(regime_avg[idx].item())
+    if shadow_ancestry_means:
+        ancestry_avg = torch.stack(shadow_ancestry_means).mean(dim=0)
+        for idx, name in enumerate(("content", "metadata", "layout", "template")):
+            metrics[f"shadow_ancestry_{name}"] = float(ancestry_avg[idx].item())
     if tokenizer_luts is not None and total_bytes > 0 and total_tokens > 0:
         bits_per_token = (total_nats / total_tokens) / math.log(2.0)
         metrics["val_bpb"] = float(bits_per_token * (total_tokens / total_bytes))
@@ -1387,9 +1691,46 @@ def checkpoint_path_for_step(path: str | Path, step: int) -> Path:
     return path.with_name(filename)
 
 
+def checkpoint_path_for_stage(path: str, stage: str) -> str:
+    if not path:
+        return path
+    if "{step}" in path:
+        return path.replace("{step}", f"{stage}_{{step}}")
+    p = Path(path)
+    suffix = "".join(p.suffixes)
+    stem = p.name[: -len(suffix)] if suffix else p.name
+    filename = f"{stem}_{stage}{suffix}" if suffix else f"{stem}_{stage}"
+    return str(p.with_name(filename))
+
+
+def load_export_object(path: str | Path) -> dict[str, Any]:
+    raw = Path(path).read_bytes()
+    last_error: Exception | None = None
+    if _COMPRESSOR == "zstd":
+        try:
+            payload = zstandard.ZstdDecompressor().decompress(raw)
+            return torch.load(io.BytesIO(payload), map_location="cpu", weights_only=False)
+        except Exception as exc:
+            last_error = exc
+    try:
+        payload = zlib.decompress(raw)
+        return torch.load(io.BytesIO(payload), map_location="cpu", weights_only=False)
+    except Exception as exc:
+        if last_error is not None:
+            raise RuntimeError(f"Failed to decompress export {path} with zstd ({last_error}) or zlib ({exc})") from exc
+        raise RuntimeError(f"Failed to decompress export {path} with zlib ({exc})") from exc
+
+
 def load_checkpoint(path: str | Path, model: HybridLanguageModel, optimizer: torch.optim.Optimizer | None = None, map_location: str | torch.device = "cpu") -> dict[str, Any]:
-    checkpoint = torch.load(path, map_location=map_location)
-    checkpoint_state = checkpoint["model_state"]
+    path = Path(path)
+    if path.suffix == ".ptz":
+        export_obj = load_export_object(path)
+        checkpoint_state = dequantize_export_state_dict(export_obj)
+        checkpoint = {"step": 0, "model_state": checkpoint_state, "optimizer_state": None, "config": None, "extra": {"export_plan": export_obj.get("plan", {})}}
+        print(f"checkpoint_format:quantized_export version:{export_obj.get('version', 'unknown')}")
+    else:
+        checkpoint = torch.load(path, map_location=map_location, weights_only=False)
+        checkpoint_state = checkpoint["model_state"]
     current_state = model.state_dict()
     compatible_state: dict[str, Tensor] = {}
     skipped_keys: list[str] = []
@@ -1619,14 +1960,26 @@ def run_training_loop(model: HybridLanguageModel, train_loader: StreamingTokenLo
     final_step = start_step
     last_saved_step: int | None = None
     qat_logged = False
+    qat_plateau_activated = False
     base_lr = config.train.shadow_lr if config.train.mode == "shadow" else config.train.backbone_lr
 
     for step in range(start_step, config.train.max_steps):
         model.train()
-        qat_active = config.train.mode == "backbone" and config.model.qat_enabled and (step + 1) >= config.train.qat_start_step
+        qat_active = (
+            config.train.mode == "backbone"
+            and config.model.qat_enabled
+            and (
+                (step + 1) >= config.train.qat_start_step
+                or qat_plateau_activated
+            )
+        )
         model.backbone.set_qat(qat_active, config.model.qat_bits)
         if qat_active and not qat_logged:
-            print(f"qat_enabled:true qat_bits:{config.model.qat_bits} qat_start_step:{config.train.qat_start_step} activated_step:{step + 1}")
+            reason = "plateau" if qat_plateau_activated and (step + 1) < config.train.qat_start_step else "scheduled"
+            print(
+                f"qat_enabled:true qat_bits:{config.model.qat_bits} qat_start_step:{config.train.qat_start_step} "
+                f"activated_step:{step + 1} reason:{reason}"
+            )
             qat_logged = True
         batch = move_batch_to_device(train_loader.next_batch(config.train.train_batch_tokens, config.model.block_size), device)
         apply_lr_schedule(optimizer, base_lr, lr_scale(step, config.train.warmup_steps))
@@ -1664,6 +2017,17 @@ def run_training_loop(model: HybridLanguageModel, train_loader: StreamingTokenLo
                     early_stop_bad_evals = 0
                 else:
                     early_stop_bad_evals += 1
+                    if (
+                        config.train.mode == "backbone"
+                        and config.model.qat_enabled
+                        and not qat_plateau_activated
+                        and early_stop_bad_evals >= 4
+                    ):
+                        qat_plateau_activated = True
+                        print(
+                            f"qat_plateau_activation:true step:{step} metric:{metric_name} "
+                            f"best:{best_metric:.4f} current:{current_metric:.4f} bad_evals:{early_stop_bad_evals}"
+                        )
                     print(f"early_stopping_wait:{early_stop_bad_evals}/{config.train.early_stopping_patience} mode:{config.train.mode} metric:{metric_name} best:{best_metric:.4f} current:{current_metric:.4f}")
                     if early_stop_bad_evals >= config.train.early_stopping_patience:
                         print(f"early_stopping_triggered step:{step} mode:{config.train.mode} metric:{best_metric_name} best:{best_metric:.4f}")
@@ -1719,6 +2083,8 @@ def main() -> None:
         model = HybridLanguageModel(config.model, config.shadow, shadow_metadata)
 
         if config.train.eval_only:
+            if config.train.mode == "all":
+                raise ValueError("--eval-only is only supported with --mode backbone or --mode shadow, not --mode all.")
             if config.train.load_checkpoint:
                 load_checkpoint(config.train.load_checkpoint, model, map_location="cpu")
             model.to(device)
@@ -1726,7 +2092,29 @@ def main() -> None:
             print_metrics("eval_only", metrics)
             return
 
-        run_training_loop(model, train_loader, val_tokens, config, device, amp_dtype, tokenizer_luts)
+        if config.train.mode == "all":
+            backbone_train = replace(
+                config.train,
+                mode="backbone",
+                load_checkpoint=config.train.load_checkpoint,
+                checkpoint_path=checkpoint_path_for_stage(config.train.checkpoint_path, "backbone"),
+                legacy_export_path="",
+            )
+            backbone_config = replace(config, train=backbone_train)
+            print("pipeline_stage:backbone")
+            run_training_loop(model, train_loader, val_tokens, backbone_config, device, amp_dtype, tokenizer_luts)
+
+            shadow_train = replace(
+                config.train,
+                mode="shadow",
+                load_checkpoint="",
+                checkpoint_path=checkpoint_path_for_stage(config.train.checkpoint_path, "shadow"),
+            )
+            shadow_config = replace(config, train=shadow_train)
+            print("pipeline_stage:shadow")
+            run_training_loop(model, train_loader, val_tokens, shadow_config, device, amp_dtype, tokenizer_luts)
+        else:
+            run_training_loop(model, train_loader, val_tokens, config, device, amp_dtype, tokenizer_luts)
 
         if config.train.generate_tokens > 0:
             model.eval()
